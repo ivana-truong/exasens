@@ -8,3 +8,6 @@ __pycache__/
 
 # Mypy
 .mypy_cache
+
+# VS code settings
+.vscode/
