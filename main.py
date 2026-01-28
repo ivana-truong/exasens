@@ -1,14 +1,13 @@
 from eda import read_exasens_csv, permittivity_boxplot, gender_table, age_hist, add_outlier_bound_in_df
-from train_model import build_pipeline, test_parameters, viz_param_search
+from train_model import build_pipeline, test_parameters, viz_param_search, performance_metrics
+from sklearn.model_selection import train_test_split
 import pandas as pd
+import numpy as np
 
 if __name__ == "__main__":
 
     # Load in dataset as dict where key is a title and value is the whole dataset or a subset
     subset_to_df = read_exasens_csv("exasens/Exasens.csv")
-
-    # Exploratory Data Analysis
-    # print(subset_to_df["All Samples"]["Diagnosis"].value_counts())
 
     # # Visualize data
     # permittivity_boxplot(subset_to_df)
@@ -21,14 +20,8 @@ if __name__ == "__main__":
     #         continue
     #     subset_to_df[key] = add_outlier_bound_in_df(df=diagnosis_df)
 
-    # # Optional: Write outliers dfs to csv in `exasens` folder
-    # for key, diagnosis_df in subset_to_df.items():
-    #     if key == "All Samples":
-    #         continue
-    #     subset_to_df[key].to_csv(f"exasens/{key}_outliers.csv")
-
-    # Encode diagnosis as integers for training
-    # Categorized as 1 for COPD and 0 for not COPD
+    # # Encode diagnosis as integers for training
+    # # Categorized as 1 for COPD and 0 for not COPD
     # diagnosis_to_integer = {
     #     "HC": 0,
     #     "Asthma": 0,
@@ -46,12 +39,33 @@ if __name__ == "__main__":
 
     exasens_prepped = pd.read_csv("exasens/exasens_prepped.csv")
 
+    # Remove outlier values so they will be imputed with median values
+    exasens_df_no_outliers = exasens_prepped.copy()
+    exasens_df_no_outliers["Imaginary Part - avg"] = np.where(
+        # Condition
+        exasens_prepped["imaginary_outlier"] == True,
+        # if True
+        np.nan,
+        # Else
+        exasens_df_no_outliers["Imaginary Part - avg"],
+    )
+    exasens_df_no_outliers["Real Part - avg"] = np.where(
+        # Condition
+        exasens_prepped["real_outlier"] == True,
+        # if True
+        np.nan,
+        # Else
+        exasens_df_no_outliers["Real Part - avg"],
+    )
+
+    x = exasens_df_no_outliers.loc[:, ["Imaginary Part - avg", "Real Part - avg", "Gender", "Age", "Smoking"]]
+    y = exasens_df_no_outliers.loc[:, "diagnosis_number"]
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=42)
+
+    # Build preprocess pipeline and test optimal parameters
     model_pipeline = build_pipeline()
-    # best_model_pipeline, test_results = test_parameters(exasens_df=exasens_prepped, model_pipeline=model_pipeline)
+    best_model_pipeline, test_results = test_parameters(x_train, y_train, model_pipeline=model_pipeline)
 
-    # Removing outliers decreased ROC-AUC?
-    exasens_df_no_outliers = exasens_prepped[exasens_prepped["is_outlier"] == False]
-    best_model_pipeline, test_results = test_parameters(exasens_df=exasens_df_no_outliers, model_pipeline=model_pipeline)
+    # Visualize model performance
     viz_param_search(search_results=test_results)
-
-    # TODO: what to do about gender imbalance in data?
+    performance_metrics(model=best_model_pipeline, x_test=x_test, y_test=y_test)

@@ -88,7 +88,7 @@ def gender_table(subset_to_df: dict[str, pd.DataFrame]) -> None:
     subset_labels = []
     for subset_name, df in subset_to_df.items():
         counts = df["Gender"].value_counts()
-        gender_data.append([counts.loc[1.0], counts.loc[0.0], format(counts.loc[1.0] / counts.loc[0.0], ".4f")])
+        gender_data.append([counts.loc[1.0] + counts.loc[0.0], counts.loc[1.0], counts.loc[0.0], format(counts.loc[1.0] / counts.loc[0.0], ".4f")])
         subset_labels.append(subset_name)
 
     ax.table(
@@ -96,11 +96,11 @@ def gender_table(subset_to_df: dict[str, pd.DataFrame]) -> None:
         rowLabels=subset_labels,
         # WARNING: This is also hard-coded and should match how `gender_data` is appended to.
         # Male = 1.0, Female = 0.0
-        colLabels=["Male", "Female", "Male/Female"],
+        colLabels=["Total", "Male", "Female", "Male/Female"],
         loc="center",
     )
 
-    plt.savefig("plots/eda/gender_counts.png", dpi=200, bbox_inches="tight")
+    plt.savefig("plots/eda/gender_counts.png", dpi=1000, bbox_inches="tight")
     plt.close()
 
 
@@ -108,7 +108,7 @@ def age_hist(subset_to_df: dict[str, pd.DataFrame]) -> None:
     """Histogram of ages in whole dataset and each subset
 
     Args:
-        subset_to_df (pd.DataFrame): _description_
+        subset_to_df (pd.DataFrame): dict where keys are names of dataset or subset and values are the corresponding data
     """
     fig, axs = plt.subplots(nrows=2, ncols=4)
     fig.suptitle("Age Distribution", fontsize=14)
@@ -172,14 +172,14 @@ def age_hist(subset_to_df: dict[str, pd.DataFrame]) -> None:
 
 
 def calc_outlier_bounds(df: pd.DataFrame, column: str) -> dict[str, float]:
-    """_summary_
+    """Calculate outlier thresholds based on interquartile range (IQR)
 
     Args:
-        df (pd.DataFrame): _description_
-        column (str): _description_
+        df (pd.DataFrame): Dataframe to calculate outlier threshold for
+        column (str): which column to calculate outlier threshold of
 
     Returns:
-        pd.DataFrame: _description_
+        dict[str, float]: dict where key identifies upper or lower bounds and values are the outlier thresholds
     """
     # drop NaN values
     permittivity_dropna = df[column].dropna()
@@ -191,9 +191,6 @@ def calc_outlier_bounds(df: pd.DataFrame, column: str) -> dict[str, float]:
     lower_outlier_bound = Q1_threshold - (1.5 * interquantile_range)
     upper_outlier_bound = Q3_threshold + (1.5 * interquantile_range)
 
-    # lower_outliers = tb_dataframe[tb_dataframe["Case detection rate (all forms), percent"] < lower_outlier_bound]
-    # upper_outliers = tb_dataframe[tb_dataframe["Case detection rate (all forms), percent"] > upper_outlier_bound]
-
     # print(f"lower bound {lower_outlier_bound}: \n {lower_outliers}")
     # print(f"upper bound {upper_outlier_bound}: \n {upper_outliers}")
 
@@ -201,14 +198,23 @@ def calc_outlier_bounds(df: pd.DataFrame, column: str) -> dict[str, float]:
 
 
 def is_outlier(real_value: float, imaginary_value: float, real_outlier_bounds: dict[str, float], imaginary_outlier_bounds: dict[str, float]) -> dict[str, bool]:
+    """Compare a saliva permittivity measurement again outlier thresholds.
+
+    Args:
+        real_value (float): real saliva permittivity value
+        imaginary_value (float): imaginary saliva permittivity value
+        real_outlier_bounds (dict[str, float]): dict of real outlier thresholds
+        imaginary_outlier_bounds (dict[str, float]): dict of imaginary outlier thresholds
+
+    Returns:
+        dict[str, bool]: dict where keys are "real" and "imaginary" and values are booleans indicating whether the value is an outlier
+    """
     if (real_value > real_outlier_bounds["upper_bound"]) or (real_value < real_outlier_bounds["lower_bound"]):
-        # print(f"outlier! {real_value} > {real_outlier_bounds["upper_bound"]} = {real_value > real_outlier_bounds["upper_bound"]} or ({real_value} < {real_outlier_bounds["lower_bound"]} = {real_value < real_outlier_bounds["lower_bound"]})")
         real_outlier = True
     else:
         real_outlier = False
 
     if (imaginary_value > imaginary_outlier_bounds["upper_bound"]) or (imaginary_value < imaginary_outlier_bounds["lower_bound"]):
-        # print(f"outlier! {imaginary_value} > {imaginary_outlier_bounds["upper_bound"]} = {imaginary_value > imaginary_outlier_bounds["upper_bound"]} or ({imaginary_value} < {imaginary_outlier_bounds["lower_bound"]} = {(imaginary_value < imaginary_outlier_bounds["lower_bound"])}")
         imaginary_outlier = True
     else:
         imaginary_outlier = False
@@ -216,30 +222,16 @@ def is_outlier(real_value: float, imaginary_value: float, real_outlier_bounds: d
     return {"real": real_outlier, "imaginary": imaginary_outlier}
 
 
-def outlier_column(outliers: dict[str, bool]) -> list[str]:
-    if outliers["real"] and outliers["imaginary"]:
-        return ["Imaginary Part - avg", "Real Part - avg"]
-    elif outliers["real"] and not outliers["imaginary"]:
-        return ["Real Part - avg"]
-    elif outliers["imaginary"] and not outliers["real"]:
-        return ["Imaginary Part - avg"]
-    else:
-        return []
-
-
 def add_outlier_bound_in_df(
     df: pd.DataFrame
 ) -> pd.DataFrame:
-    """_summary_
+    """Find outliers in dataframe and add columns identifying real and imaginary outliers
 
     Args:
-        lower_outlier_bound (float): _description_
-        upper_outlier_bound (float): _description_
-        df (pd.DataFrame): _description_
-        column_name (str): _description_
+        df (pd.DataFrame): DataFrame to calculate outliers of
 
     Returns:
-        pd.DataFrame: _description_
+        pd.DataFrame: `df` with additional columns identifying real and imaginary outliers
     """
     real_outlier_bounds: dict[str, float] = calc_outlier_bounds(df=df, column="Real Part - avg")
     imaginary_outlier_bounds: dict[str, float] = calc_outlier_bounds(df=df, column="Imaginary Part - avg")
@@ -247,13 +239,13 @@ def add_outlier_bound_in_df(
     # print(f"imaginary outliers bounds: {imaginary_outlier_bounds}")
 
     # Mark as outlier if real or imaginary permittivity outlier
-    is_outlier_vals: list[bool] = []
-    outlier_column_vals: list[list[str]] = []
+    real_outliers: list[bool] = []
+    imaginary_outliers: list[bool] = []
     for row_num in range(len(df)):
         # Assuming here that both will be missing if one is missing
         if pd.isna(df["Real Part - avg"].iloc[row_num]) and pd.isna(df["Imaginary Part - avg"].iloc[row_num]):
-            is_outlier_vals.append(False)
-            outlier_column_vals.append([])
+            real_outliers.append(False)
+            imaginary_outliers.append(False)
         else:
             col_to_outlier_bool = is_outlier(
                 real_outlier_bounds=real_outlier_bounds,
@@ -261,13 +253,11 @@ def add_outlier_bound_in_df(
                 real_value=df["Real Part - avg"].iloc[row_num],
                 imaginary_value=df["Imaginary Part - avg"].iloc[row_num]
             )
-            # If either real or imaginary outlier boolean is True, add True. Else, append False
-            is_outlier_vals.append(col_to_outlier_bool["real"] | col_to_outlier_bool["imaginary"])
+            # If either real or imaginary outlier, append to respective lists
+            real_outliers.append(col_to_outlier_bool["real"])
+            imaginary_outliers.append(col_to_outlier_bool["imaginary"])
 
-            # Add which column or columns were outliers
-            outlier_column_vals.append(outlier_column(outliers=col_to_outlier_bool))
-
-    df["is_outlier"] = is_outlier_vals
-    df["outlier_column"] = outlier_column_vals
+    df["real_outlier"] = real_outliers
+    df["imaginary_outlier"] = imaginary_outliers
 
     return df
