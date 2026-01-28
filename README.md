@@ -13,6 +13,7 @@ python main.py
 
 # Files
 
+Root Directory
 | File  | Summary |
 | ------------- | ------------- |
 | main.py  | Run functions in `eda.py` and `train_model.py`  |
@@ -24,7 +25,6 @@ Exasens Directory
 | ------------- | ------------- |
 | exasens/Exasens.csv | Dataset downloaded from [UC Irvine ML Repo](https://doi.org/10.24432/C5M03M) |
 | exasens/exasens_prepped.csv | CSV with additional columns identifying outliers and converting diagnosis to integers |
-| exasens/exasens_predictions.csv | CSV with an additional column for the model's predictions |
 
 Plots Directory
 | Directory  | Summary |
