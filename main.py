@@ -9,35 +9,35 @@ if __name__ == "__main__":
     # Load in dataset as dict where key is a title and value is the whole dataset or a subset
     subset_to_df = read_exasens_csv("exasens/Exasens.csv")
 
-    # # Visualize data
-    # permittivity_boxplot(subset_to_df)
-    # gender_table(subset_to_df)
-    # age_hist(subset_to_df)
+    # Visualize data
+    permittivity_boxplot(subset_to_df)
+    gender_table(subset_to_df)
+    age_hist(subset_to_df)
 
-    # # Mark permittivity outliers for each subset
-    # for key, diagnosis_df in subset_to_df.items():
-    #     if key == "All Samples":
-    #         continue
-    #     subset_to_df[key] = add_outlier_bound_in_df(df=diagnosis_df)
+    # Mark permittivity outliers for each subset
+    for key, diagnosis_df in subset_to_df.items():
+        if key == "All Samples":
+            continue
+        subset_to_df[key] = add_outlier_bound_in_df(df=diagnosis_df)
 
-    # # Encode diagnosis as integers for training
-    # # Categorized as 1 for COPD and 0 for not COPD
-    # diagnosis_to_integer = {
-    #     "HC": 0,
-    #     "Asthma": 0,
-    #     "Infected": 0,
-    #     "COPD": 1
-    # }
-    # for key, diagnosis_df in subset_to_df.items():
-    #     if key == "All Samples":
-    #         continue
-    #     subset_to_df[key]["diagnosis_number"] = diagnosis_to_integer[key]
+    # Encode diagnosis as integers for training
+    # Categorized as 1 for COPD and 0 for not COPD
+    diagnosis_to_integer = {
+        "HC": 0,
+        "Asthma": 0,
+        "Infected": 0,
+        "COPD": 1
+    }
+    for key, diagnosis_df in subset_to_df.items():
+        if key == "All Samples":
+            continue
+        subset_to_df[key]["diagnosis_number"] = diagnosis_to_integer[key]
 
-    # # Merge subsets into one dataset and export
-    # exasens_prepped = pd.concat([subset_to_df["HC"], subset_to_df["Asthma"], subset_to_df["Infected"], subset_to_df["COPD"]], axis="rows")
-    # exasens_prepped.to_csv("./exasens/exasens_prepped.csv", index=False)
+    # Merge subsets into one dataset and export
+    exasens_prepped = pd.concat([subset_to_df["HC"], subset_to_df["Asthma"], subset_to_df["Infected"], subset_to_df["COPD"]], axis="rows")
+    exasens_prepped.to_csv("./exasens/exasens_prepped.csv", index=False)
 
-    exasens_prepped = pd.read_csv("exasens/exasens_prepped.csv")
+    # exasens_prepped = pd.read_csv("exasens/exasens_prepped.csv")
 
     # Remove outlier values so they will be imputed with median values
     exasens_df_no_outliers = exasens_prepped.copy()

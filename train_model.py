@@ -74,8 +74,6 @@ def test_parameters(x: pd.DataFrame, y: pd.Series, model_pipeline: Pipeline) -> 
     # test parameters
     param_to_values = {
         "clf__C": [0.001, 0.01, 0.1, 0.5, 1.0, 10.0, 11.0, 12.0, 15.0],
-        # 0.0 was always the best parameter, so removed this test
-        # "clf__l1_ratio": [0.0, 0.25, 0.5, 0.75, 1.0],
     }
 
     param_search = GridSearchCV(
